@@ -1,0 +1,141 @@
+#!/bin/bash
+
+	# ====================================================================================
+	# remake_actions
+	#
+	# (This is based on remake_desktop, which combines desktop files.)
+	#
+	# Recombine the different languages after download into one actions file.
+	#
+	# What does this program actually do? We have for each language, the translations of
+	# the names and descriptions of each thunar custom action.
+	#
+	# We have to format them into the proper xml line, and splice them together ready to
+	# be pasted into uca.xml. (We could go one step further and write them into the
+	# uca.xml file directly, but for the moment we will leave that to be done by hand.)
+	#
+	# All this depends on the Transifex names and descriptions being in the same order
+	# as the actions in uca.xml. This should always be the case because Transifex is
+	# updated with the English names and descriptions from uca.xml. But a visual cross-
+	# check with the English should be done when pasting or before.
+	# ====================================================================================
+	
+	# ====================================================================================
+	# Pre-conditions:
+	#	The directory sort/ contains:
+	#		remake_actions					(this script)
+	#		download/						Transifex language files. Note: only the
+	#										files that actually have fairly complete
+	#										translations. Don't want to fill up uca.xml
+	#										with untranslated languages just because they
+	#										are part of the standard languages.
+	#
+	#	Make sure you have removed the English file from the download directory. Its xml
+	#   format is different. So when doing the paste, keep the English original in uca.xml.
+	#
+	#	After this program is over, paste the output into uca.xml, over-writing the
+	#   name and description lines (but retaining the English and checking first with the
+	#   downloaded English file that they correspond).
+	# ====================================================================================
+		
+	# ____________________________________________________________________________________	
+	# Create a work directory so we can repeat the program without affecting original files.
+	# ____________________________________________________________________________________	
+	
+dir_download="download"
+dir_work="work"
+
+if [ -d "$dir_work" ]
+then	rm -r "$dir_work"
+fi
+
+mkdir "$dir_work"
+cp -r "$dir_download/"* "$dir_work"
+
+	# ____________________________________________________________________________________	
+	# Add newline to last line of files if necessary.
+	# It is easier to use od to get character representation of last byte than to try
+	# to get integer value of newline in string. (Shell suppresses non-printing characters
+	# when passing to script variables.)
+	# ____________________________________________________________________________________	
+
+for f in $(ls "$dir_work"/*)
+do
+	x=$(tail --bytes=1 $f | od -An -tu)
+	if [ "$x" -ne 10 ]
+	then	echo >> "$f"
+	fi
+done
+
+	# ____________________________________________________________________________________	
+	# Process each language in turn to format their lines properly for xml.
+	# That is, turn:
+	#		name::Computar md5sum
+	#		desc::Mostrar valor del md5sum del ISO
+	# into:
+	#		   <name xml:lang="es">Computar md5sum</name>
+	#		   <description xml:lang="es">Mostrar valor del md5sum del ISO</description>
+	#
+	# (Yes, indent 3 spaces.)
+	# ____________________________________________________________________________________	
+
+for langfile in $(ls "$dir_work"/*)
+do
+
+	echo "$langfile"
+
+		# First get the language code from the file name.
+		# eg if the file name is mx-thunar-custom-actions_pt_BR.ts
+		# then get pt_BR. Remove everything up to and including the first underscore.
+		# Then remove the trailing .ts
+		
+	flang=${langfile#*_}
+	flang=${flang%.*}
+	
+		# Construct their formatted file name and create it.
+		
+	formattedfile="$dir_work"'/formatted_'"$flang"'.txt'
+	echo -n > "$formattedfile"
+		
+	let c=0		# Line count
+	let t=0		# Type: 1-name, 2-desc
+	
+		# Read each line of the file.
+		
+	while read l
+	do
+	
+		let c=c+1
+		
+			# Strip off any header that may be there.
+			# i.e. the name:: or descr::
+			# (We don't require it to be there, it's only for their info.)
+			
+			# Check to see if the rest of the line is empty. That would be bad.
+			# Replace with English by hand if necessary.
+			
+		m=${l#*::}
+		if [ -z "$m" ]
+		then	echo "Line $c: nothing there - $l"
+				exit
+		fi
+		
+			# Prepare for name or description in xml.
+			
+		let t=t+1
+		if [ "$t" -eq 1 ]
+		then	ttext="name"
+		else	ttext="description"
+				let t=0				# Prepare for next pair
+		fi
+		
+		echo '   <'"$ttext"' xml:lang="'"$flang"'">'"$m"'</'"$ttext"'>' >> "$formattedfile"
+
+	done < "$langfile"
+
+done
+
+	# Now splice them together.
+	
+paste -d "\n" $(ls "$dir_work/formatted"*) > all.txt
+

@@ -1,0 +1,159 @@
+#!/bin/sh
+
+	# remake_desktops
+
+	# Recombine the different languages after download into one desktop file.
+	#
+	# The Transifex files are by language. But we need the entries by app in order
+	# to make each app's desktop file. So we do a little massaging and pasting.
+	# The end result is one large file with each app's entries in order. We could have
+	# split these into separate app files, but no point since other things go into the
+	# desktop files. We will use this big file to cut and paste into the real desktop file.
+	# We could have taken this all the way and merged what we've got here into the app's
+	# desktop file. That would complete the automation.
+
+	# We want to leave the original downloaded files untouched so we can repeat this script
+	# without having to undo any changes. So we create a new directory to hold the work files.
+	# If it already exists, remove any existing files from previous run.
+	# -f means give no message if there are no files there.
+	# Note too that we say "$dir_work"/*, not "$dir_work/*". The latter removes the
+	# file expansion of * and looks for non-existent file work/*
+	# Then copy the downloaded files to the work directory.
+	
+dir_download="mx-all-desktop-entries"
+dir_work="work"
+
+if [ -d "$dir_work" ]
+then	rm -f "$dir_work"/*
+else	mkdir "$dir_work"
+fi
+
+cp "$dir_download"/* "$dir_work"
+
+	# If the last line of a file does not have a new line character, then we will
+	# not be able to read it with the "read" command. It will just be ignored.
+	# Sadly, Transifex does not put that new line there on the last line.
+	#
+	# So we will add one to the end of each file. But first we check to see if the
+	# last character is a new line. One could have got there if we edited the
+	# file manually to correct an error. Some editors automatically add the new line
+	# when they rewrite the file. And we don't want to add blank lines to the file
+	# because that will mess up our processing. We would interpret that as an error.
+	#
+	# Note that we use an od to first get the printable representation of newline from tail,
+	# because the shell filters out special characters when passing bytes to a variable.
+
+for f in $(ls "$dir_work"/*)
+do
+	x=$(tail --bytes=1 $f | od -An -tu)
+	if [ "$x" -ne 10 ]
+	then	echo >> "$f"
+	fi
+done
+
+	# Create the concatenated file. (Write over any existing one.)
+
+echo -n > all.txt
+
+	# Open each language's file.
+
+for f in $(ls "$dir_work"/*)
+do
+		# First get the language code from the file name.
+		# eg if the file name is mx-all-desktop-entries_pt_BR.ts
+		# remove everything up to and including the first underscore.
+		# Then remove the trailing .ts or whatever.
+		#
+		# Lines will be printed with the language in [], like Name[pt_BR]=.
+		# Except for English, which has no modifier for Name and Comment.
+		
+	flang=${f#*_}
+	flang=${flang%.*}
+
+	echo "$flang"
+	
+	if [ "$flang" = 'en' ]
+	then	plang=""
+	else	plang='['"$flang"']'
+	fi
+	
+		# Make name for formatted file.
+		# Use the language name for the files.
+		# Except for English. Make it '11' so it sorts first in list
+		# of file names. (If leave it empty, it won't come first because
+		# ls just skips over non-alphanumeric characters when sorting file names
+		# and the English file would end up in "t's" because of .txt extension.)
+	
+	if [ "$flang" = 'en' ]
+	then	xlang='11'
+	else	xlang="$flang"
+	fi
+	
+	formatfile="$dir_work"'/formatted_'"$xlang"'.txt'
+	
+		# Now read each line of the file.
+
+	i=0
+	while read l
+	do
+	
+			# Construct a line number.
+
+		i=$((i+1))
+	
+			# Sometimes the translator will put their language code in the translation.
+			# Sometimes they won't. Sometimes they even translate Name or Comment.
+			# But we need the language code in order to sort. So standardize the lines
+			# by making each line begin Name[xx]= or Comment[xx]=
+			# It's a simple odd/even test, since our uploaded file always contains
+			# Name and Comment in pairs. (Note that when you look at the file on
+			# Transifex it doesn't appear that way. That's because there are two
+			# lines that start Name=MX Updater. Of course, Transifex will only show
+			# that line once. But when it downloads, you get both lines.)
+
+		t=$((i%2))
+		if [ "$t" -eq 1 ]
+		then	ltype="Name"
+		else	ltype="Comment"
+		fi
+		
+			# The actual translation is whatever follows the =
+			# Note that there is always something there. Unlike with QT files where
+			# you can have "type="unfinished", and it relies on the QT routines to
+			# figure out what to substitute, with a text file like ours Transifex
+			# puts the English in on download, if there is no entry. Which means
+			# our files are all the same size. But it also means we cannot tell if
+			# the entry contains English because the translator felt it best to leave
+			# that way, or because Transifex put it in. But that's OK. We can still
+			# put it all into the actual app's desktop file, because that's what would
+			# be displayed to a user regardless. And if they ever change on Transifex,
+			# that will show up here.
+			#
+			# First make sure there *is* an equals sign. The user may not have put one
+			# there. We want to abort and fix that.
+		
+		if [ $(expr index "$l" '=') -eq 0 ]
+		then	echo
+				echo "Error: No = found"
+				echo "File:  $f"
+				echo "Lnum:  $i"
+				echo "Line:  $l"
+				exit
+		fi
+		
+		lbody=${l#*=}
+
+			# Write out the line. It will look like this:
+			#		Name[pt_BR]=xxxxxxx
+			# or	Comment[pt_BR]=yyyyyyyyy
+			
+		echo "$ltype""$plang"'='"$lbody" >> "$formatfile"
+
+	done < "$f"
+
+done
+
+	# Now paste the files together.
+	
+paste -d "\n" $(ls "$dir_work/formatted"*) > all.txt
+

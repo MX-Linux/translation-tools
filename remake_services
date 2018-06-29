@@ -1,0 +1,195 @@
+#!/bin/bash
+
+	# ====================================================================================
+	# remake_services
+	#
+	# (This is based on remake_desktop, which combines desktop files.)
+	#
+	# Recombine the different languages after download into one services.list file.
+	#
+	# This version just concatenates the files.
+	#
+	# (In future, we might want to do one English line, all the translations for that,
+	# the next English line, all that translations for that, etc. as is done with the
+	# desktop files. There it was necessary, because there are individual desktop files.
+	# Here, there is just one services.list file, and the order doesn't matter, so it
+	# looks best with all the lines for each language together.)
+	#
+	# What does this program actually do? We have for each language, the translations of
+	# the category names and the service descriptions. (The service name remains
+	# invariant because it's the name of a program usually.)
+	#
+	# We have to turn those two files into one. We add to each description line, the
+	# appropriate service name and translated category name:
+	#
+	# - The service name is easy because the descriptions match line for line with the
+	#   English lines. We just have to extract and save the service names from the
+	#   English lines up front. We add on the language code to distinguish them for
+	#   the gazelle installer.
+	# - For the category, we also extract them from the English lines up front and 
+	#   compare to the English category list. So for each line, we know whether it's
+	#   the first, second, etc. category. When we come to that line for a language,
+	#   we just use the same number to find its translation in their list of categories.
+	# - For the description, we just use the translated description from the line we
+	#   are working on.
+	#
+	# All this depends on the English categories and translated categories, and English
+	# service lines and translated description lines, being exactly in sync. This should
+	# be the case because Transifex is updated with the English categories and
+	# descriptions as found in services.list.
+	# ====================================================================================
+	
+	# ====================================================================================
+	# Pre-conditions:
+	#	The directory sort/ contains:
+	#		remake_services.sh		(this script)
+	#		gazelle-services-categories.txt		List of English categories
+	#											that was extracted from services.list
+	#											and uploaded to Transifex
+	#		gazelle-services-descriptions.txt	List of English services descriptions
+	#											that was extracted from services.list
+	#											and uploaded to Transifex (not actually
+	#											used in this program)
+	#		gazelle-services-list.txt			The English lines from services.list,
+	#											of the form name=category, description
+	#											with comments and other languages removed
+	#		download/categories/...				Transifex language files for categories
+	#		download/descriptions/...			Transifex language files for descriptions
+	#												(They should match in number and language)
+	#
+	#	Make sure you have removed the English category and description files from the
+	#	download directories, so they don't get processed.
+	#
+	#	After this program is over, insert the top part of the services.list file
+	#	containing comment lines and English lines into the top of this output.
+	# ====================================================================================
+		
+	# ____________________________________________________________________________________	
+	# Create a work directory so we can repeat the program without affecting original files.
+	# ____________________________________________________________________________________	
+	
+dir_download="download"
+dir_work="work"
+
+if [ -d "$dir_work" ]
+then	rm -r "$dir_work"
+fi
+
+mkdir "$dir_work"
+cp -r "$dir_download"/categories "$dir_work"
+cp -r "$dir_download"/descriptions "$dir_work"
+
+	# ____________________________________________________________________________________	
+	# Add newline to last line of files if necessary.
+	# ____________________________________________________________________________________	
+
+for f in $(ls "$dir_work"/categories/*) $(ls "$dir_work"/descriptions/*)
+do
+	x=$(tail --bytes=1 $f | od -An -tu)
+	if [ "$x" -ne 10 ]
+	then	echo >> "$f"
+	fi
+done
+
+	# ____________________________________________________________________________________	
+	# Read the English categories so we can match against categories in service list.
+	# ____________________________________________________________________________________	
+
+declare -a engcat
+mapfile -O 1 -t engcat < <( cat gazelle-services-categories.txt )
+ncat=${#engcat[@]}
+
+	# ____________________________________________________________________________________	
+	# Read the English services list, extracting service name and category.
+	# Convert the category to its number in the just saved list.
+	#
+	# ${s%%=*}	Strip off the largest trailing part that begins with "=". The remainder
+	#			is the service name.
+	# ${s#*=}	Strip off the smallest leading part that ends with "=". i.e. strip off
+	#			the service name, leaving the rest of the line.
+	# ${x%%,*}	Strip off the largest trailing part that begins with ",". The remainder
+	#			is the category.
+	# ____________________________________________________________________________________	
+
+declare -a servicename
+declare -a servicecat
+
+let i=0
+while read s
+do
+	let i=i+1
+	servicename[i]=${s%%=*}
+	x=${s#*=}
+	y=${x%%,*}
+	
+	let servicecat[i]=0
+	for (( j=1; j-(ncat+1); j=j+1 ))
+	do
+		if [ "$y" = "${engcat[j]}" ]
+		then	let servicecat[i]=j
+		fi
+	done
+
+	if [ "${servicecat[i]}" -eq 0 ]
+	then	echo "Error - no such category for $s"
+			exit
+	fi
+		
+	# echo "$i ${servicename[i]} ${servicecat[i]}"
+	
+done < gazelle-services-list.txt
+
+	# ____________________________________________________________________________________	
+	# Create the concatenated file. (Write over any existing one.)
+	# Process each language in turn by reading their category file, then their description
+	# file.
+	# ____________________________________________________________________________________	
+
+echo -n > all.txt
+declare -a transcat
+	
+for catfile in $(ls "$dir_work"/categories/*)
+do
+
+		# First get the language code from the file name.
+		# eg if the file name is gazelle-services-categories_pt_BR.ts
+		# then get pt_BR. Remove everything up to and including the first underscore.
+		# Then remove the trailing .ts
+		
+	flang=${catfile#*_}
+	flang=${flang%.*}
+
+		# Now pop the categories into an array.
+
+	mapfile -O 1 -t transcat < <(cat "$catfile")
+	
+		# Construct their description file name
+		
+	desfile="$dir_work"/descriptions/gazelle-services-descriptions'_'"$flang"'.ts'
+	
+	echo "$flang"
+	
+		# Start new block in the output file.
+		
+	echo >> all.txt
+	echo "# $flang" >> all.txt
+	echo >> all.txt
+	
+		# Read each line of this language's services descriptions.
+		# Add the service name from the service names saved above.
+		# Get the category number for this service, and use this language's category name.
+
+	let d=0
+	while read l
+	do
+	
+		let d=d+1
+		myname=${servicename[d]}'_'"$flang"
+		let c=${servicecat[d]}
+		mycat=${transcat[c]}
+		echo "$myname"'='"$mycat"', '"$l" >> all.txt
+		
+
+	done < "$desfile"
+
+done
