@@ -31,3 +31,12 @@ Added this script:
 It displays a list of MX resources on Transifex, and downloads a standard set of
 language files for the selected resource.
 
+2018.06.29
+
+Added this script:
+
+	makemofiles
+
+It takes the downloaded Transifex shell or Python translated files, puts them into
+a po/ directory, and creates the "object" files, putting them in separate
+language directories under a mo/ directory.

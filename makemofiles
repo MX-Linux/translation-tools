@@ -1,0 +1,65 @@
+#!/bin/bash
+
+################################################################################
+# Program:		makemofiles
+#
+# Date:			2018.02.08
+#
+# Author:		Old Giza
+#
+# From the files downloaded from Transifex, create the .mo files ready to be
+# pushed to GitHub.
+#
+#  The prerequisites are:
+#		- you are running this script in an empty directory which will become
+#		  the new translations/ directory
+#		- all the downloaded Transifex files are in this directory too
+#
+# And the end results are:
+#		- po/ directory with all the .po files there
+#		- mo/ directory, with language subdirectories like am/, ca/, fr/ etc.
+#		- each language subdirectory contains the .mo file for that language, 
+#		  eg mx-idevice-mounter.mo (note that each mo file has the same name;
+#		  they are distinguished by the sub directory they are in)
+################################################################################
+
+	# __________________________________________________________________________
+	# First, rename the .ts files to .po.
+	#
+	# If the files were downloaded individually, then they will already have
+	# the extension .po.
+	# But if they were downloaded using the getmxtrans.sh script, then will have
+	# the .ts extension because that script is not smart enough to distinguish
+	# between QT and script language files.
+	# __________________________________________________________________________
+	
+rename 's/\.ts$/\.po/' *.ts
+
+	# __________________________________________________________________________
+	# Make the main directories.
+	# __________________________________________________________________________
+
+mkdir mo
+mkdir po
+
+	# __________________________________________________________________________
+	# Process each po file in turn.
+	# __________________________________________________________________________
+
+for pofile in $(ls *.po)
+do
+	echo -n "$pofile"' ...'
+	
+	filepart=${pofile%.*}		# remove extension (.po)
+	langpart=${filepart#*_}		# should be no _ embedded in file name part
+	basepart=${filepart%%_*}	# because could be like _pt_BR
+	
+	echo -n " $basepart $langpart"' ...'
+	
+	mkdir 'mo/'"$langpart"
+	msgfmt -o 'mo/'"$langpart"'/'"$basepart"'.mo' "$pofile"
+	
+	mv "$pofile" 'po/'
+	
+	echo 'done'
+done
