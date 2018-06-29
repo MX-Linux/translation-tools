@@ -1,0 +1,229 @@
+#!/bin/bash
+
+	# ====================================================================
+	# Script:	getmxtrans.sh
+	# Date:		2016.10.06
+	# Author:	old giza
+	#
+	# Download the language files for one resource.
+	# This is less work than using the transifex web interface to download
+	# the files one by one.
+	#
+	# Note that this script uses several bash-specific features not
+	# available in the dash shell (pointed to by sh).
+	# ====================================================================
+
+if [ $# -ne 2 ]
+then	echo "getmxtrans.sh: incorrect number of arguments"
+	echo "usage: getmxtrans.sh txuser txpassword"
+	exit
+fi
+
+echo
+echo "getmxtrans.sh"
+echo "Download from Transifex the translation files for a resource"
+echo
+
+stlang="am ca cs de el en es fi fr hi hr hu it ja kk lt nl pl pt pt_BR ro ru sk sv tr uk zh_TW"
+exlang="ar nb bg"
+alllang="$stlang"
+#alllang="$stlang $exlang"
+
+userpass="$1"':'"$2"
+url='https://www.transifex.com/api/2/project/antix-development/'
+
+	# ____________________________________________________________________
+	#
+	# Get a list of the available resources.
+	# We restrict ourselves to the MX related resources, because those are
+	# the only ones we are handling. But note that some of the antiX
+	# related resources are also used by MX. Those are handled by antiX
+	# people, so not touched by this script.
+	#
+	# We could just list all the resources we need here in an array,
+	# like so:
+	#
+	#	reslist=(			\
+	#	null				\
+	#	mx-all-desktop-entries		\
+	#	mx-bootrepair			\
+	#	...
+	#	mx-welcome			\
+	#	)
+	#
+	# where we put the zeroeth element to "null" just to avoid zero-
+	# based arrays. We would have to keep this array up to date, which
+	# isn't a big deal.
+	#
+	# But instead, we will use the API to get a current list of all
+	# resources starting "mx-". One exception: also get resource ddm-mx.
+	#
+	# Note that this name is the *Transifex* name of the resource. In
+	# a few cases, this differs from the github app name:
+	#
+	# 	app			Transifex
+	#	-----------------	----------------------
+	#	mx-usb-unmounter	mx-usb-unmounter
+	#				mx-usb-unmounter-start
+	#	mx-test-installer	mx-test-repo-installer
+	#
+	# Which means that the directory we create (which is named by
+	# resource) does not always correspond to the repo name. No problem.
+	# It's just a placeholder for the files till they get copied
+	# elsewhere.
+	#
+	# We use process substitution to put the output of the piped commands
+	# into an array using the mapfile command.
+	#
+	# (1) So first we get a list of resource info that looks like this ...
+	#    {
+	#        "source_language_code": "en", 
+	#        "name": "adddesktop", 
+	#        "i18n_type": "PO", 
+	#        "priority": "0", 
+	#        "slug": "adddesktop", 
+	#        "categories": null
+	#    }, 
+	#    ...
+	# (2) Select the slug lines and print the 4th field (resource name)
+	#     based on field separator " instead of space.
+	# (3) Select the mx- (or ddm-mx) resources.
+	# (4) map them into an array, starting at index 1 and removing
+	#     trailing newlines.
+	# ____________________________________________________________________
+
+declare -a reslist
+
+mapfile -O 1 -t reslist < <( \
+curl -L --user "$userpass" -X GET "$url"'resources/'	\
+| awk -v FS='"' '/"slug":/ {print $4}'			\
+| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print}' )					\
+
+	# ____________________________________________________________________
+	#
+	# Print the resources in two columns.
+	# We order by column rather than row just to allow the eye to scan
+	# 2 columns rather than many rows.
+	#
+	# Calculate column offset.
+	# ie, if number of resources is 14, then column offset is 7.
+	# But if 15, then column offset is 8.
+	#
+	# Then print each resource.
+	# If i is an odd number, then we are doing the left column.
+	# If i is even, then we are doing the right. Add the offset.
+	# Finally, if i is even or it is the last one, then print the newline.
+	# ____________________________________________________________________
+
+nr=${#reslist[@]}
+echo
+echo "Number of resources $nr"
+echo
+
+if [ $(( nr%2 )) -eq 0 ]
+then	let offset=nr/2
+else	let offset=(nr/2)+1
+fi
+
+let i=1
+
+while [ $i -le $nr ]
+do
+	if [ $(( i%2 )) -eq 1 ]
+	then	let r=(i/2)+1
+	else	let r=(i/2)+offset
+	fi
+
+	resource=${reslist[r]}
+	printf '  %5d %-30s' "$r" "$resource"
+
+	if [ $(( i%2 )) -eq 0 ] || [ $i -eq $nr ]
+	then	printf '\n'
+	fi
+
+	let i=i+1
+done
+
+	# ____________________________________________________________________
+	#
+	# Pick the resource whose translations we want to download.
+	# Edit the reply to avoid junk.
+	# ____________________________________________________________________
+
+read -p "Resource number? " r
+
+if [ -z $r ]
+then	echo "No resource selected"
+	exit
+fi
+
+[[ $r =~ ^[[:digit:]]+$ ]]
+if [ $? -ne 0 ]
+then	echo "Not a valid number"
+	exit
+fi
+
+if [ ${#r} -gt ${#nr} ]
+then	echo "Number too large"
+	exit
+fi
+
+if [ $r -gt $nr ]
+then	echo "Number out of range 1 - $nr"
+	exit
+fi
+
+if [ $r -eq 0 ]
+then	echo "No resource selected"
+	exit
+fi
+
+resource=${reslist[r]}
+
+	# ____________________________________________________________________
+	#
+	# Prepare the directory.
+	# Make them if necessary, and clear out old files.
+	# ____________________________________________________________________
+
+if [ ! -e "downloads" ]
+then	echo "making downloads directory"
+	mkdir "downloads"
+else	if [ ! -d "downloads" ]
+	then	echo "'downloads' exists but is not a directory, cannot use it"
+		exit
+	fi
+fi
+
+if [ ! -e "downloads/$resource" ]
+then	echo "making $resource sub-directory"
+	mkdir "downloads/$resource"
+else	if [ ! -d "downloads/$resource" ]
+	then	echo "'""downloads/$resource""'"" exists but is not a directory"
+		exit
+	else	echo "removing previous downloads in $resource directory"
+		rm 'downloads/'"$resource"'/'*
+	fi
+fi
+
+	# ____________________________________________________________________
+	#
+	# Download the translations.
+	# Note that we give extension .ts to all (some will be .po, so check)
+	# ____________________________________________________________________
+
+echo
+echo "Downloading translations files for $resource ..."
+
+for l in $alllang
+do
+	outfile="downloads/$resource/$resource"'_'"$l"'.ts'
+	getphrase="$url"'resource/'"$resource"'/translation/'"$l"'/?file'
+	echo
+	echo "$l $outfile $getphrase"
+
+	curl -L --user "$userpass" -o "$outfile" -X GET "$getphrase"
+
+done
+
+exit

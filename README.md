@@ -21,4 +21,13 @@ remake-desktops creates a file that can be used to update the individual app's
 
 remake services creates a file that can be used to update the services.list file
                 used by the Gazelle installer.
-                
+
+2018.06.29
+
+Added this script:
+
+	getmxtrans
+
+It displays a list of MX resources on Transifex, and downloads a standard set of
+language files for the selected resource.
+
