@@ -1,0 +1,253 @@
+#!/bin/bash
+
+	# ====================================================================================
+	# Program:		remake_pkglist_des
+	#
+	# Purpose:		Remake each pm file, using the downloaded description files.
+	#
+	# Author:		old giza
+	#
+	# Date:			2018.07.15
+	#
+	# What does this program actually do? We have for each language, the translations of
+	# the package descriptions. (The package name remains invariant because it's the name
+	# of a program usually.)
+	#
+	# For each pm file, we replace its description tag block with the
+	# downloaded translations. The difficulty is that those downloaded translations
+	# are by the individual language, not by the individual description.
+	# So we first have to invert those downloaded files. The paste command is our friend.
+	#
+	# We only use the descriptions once, for the pm file it is
+	# associated with. So we can just keep reading up the inverted descriptions file,
+	# inserting the next block into the next pm file.
+	#
+	# All this depends on the pm files being in a one-to-one relationship with the
+	# descriptions on Transifex. This should be always the case if you have uploaded
+	# the English descriptions (see the extract program) to Transifex before downloading
+	# the description files. Note that looking at Transifex can be a bit deceptive.
+	# Where there are two descriptions the same, it will appear only once on Transifex,
+	# but appear twice in the correct places in the downloads.
+	# ====================================================================================
+	
+	# ====================================================================================
+	# Pre-conditions:
+	#	The directory remake/ contains:
+	#		remake_des										This script
+	#		download/mx-packageinstaller-descriptions/...	Transifex language files for descriptions
+	#		download/mx-packageinstaller-pkglist/...		The original pm files
+	#
+	#	After this program is over, you will have:
+	#		work-des/updated_pm/							Updated pm files
+	#		work-des/diff_pm/								Only the ones that changed
+	# ====================================================================================
+
+	# ====================================================================================
+	# Functions
+	# ====================================================================================
+
+	# ____________________________________________________________________________________	
+	# Replace the description block.
+	# Doesn't matter how many lines are in the existing file.
+	# (Although there must have been at least one in order for it to have gotten up to
+	# Transifex in the first place.)
+	# ____________________________________________________________________________________	
+
+function	funPRINT_DES
+{
+
+	echo '<description>' >> "$updatefile"
+	let i=0
+	while [ "$i" -lt "$ndeslang" ]
+	do
+		let i=i+1
+		read -u6 desline
+		echo '   <'"${deslang[i]}"'>'"$desline"'</'"${deslang[i]}"'>' >> "$updatefile"
+	done
+   	echo '</description>' >> "$updatefile"	
+}
+
+	# ====================================================================================
+	# Main line
+	# ====================================================================================
+
+	# ____________________________________________________________________________________	
+	# Create a work directory so we can repeat the program without affecting original files.
+	# ____________________________________________________________________________________	
+
+echo "Creating work directory ..."
+
+dir_download="download"
+dir_work="work-des"
+
+if [ -d "$dir_work" ]
+then	rm -r "$dir_work"
+fi
+
+mkdir "$dir_work"
+cp -r "$dir_download"/mx-packageinstaller-descriptions	"$dir_work"
+cp -r "$dir_download"/mx-packageinstaller-pkglist		"$dir_work"
+mkdir "$dir_work"'/updated_pm'
+mkdir "$dir_work"'/diff_pm'
+
+	# ____________________________________________________________________________________	
+	# Add newline to last line of files if necessary.
+	# ____________________________________________________________________________________	
+
+echo "Ensuring files end with newline ..."
+
+for f in	$(ls "$dir_work"/mx-packageinstaller-descriptions/*)	\
+			$(ls "$dir_work"/mx-packageinstaller-pkglist/*)
+do
+	x=$(tail --bytes=1 $f | od -An -tu)
+	if [ "$x" -ne 10 ]
+	then	echo >> "$f"
+	fi
+done
+
+	# ____________________________________________________________________________________	
+	# Get the languages of the description files.
+	# ____________________________________________________________________________________	
+
+echo "Processing descriptions ..."
+
+declare -a deslang
+let ndeslang=0
+
+for desfile in $(ls -1 "$dir_work"/mx-packageinstaller-descriptions/*)
+do
+
+		# Extract language
+		
+	flang=${desfile#*_}
+	flang=${flang%.*}
+
+	let ndeslang=ndeslang+1
+	deslang[ndeslang]="$flang"
+	
+done
+
+	# ____________________________________________________________________________________	
+	# Paste the language description files together by description.
+	# Then don't put it in an array - too many. We will process them sequentially as we
+	# process each pm file in sync. So open it for input. We will read it bit by bit as
+	# needed using "read -u6 ...".
+	# ____________________________________________________________________________________	
+
+paste -d "\n" $(ls "$dir_work/mx-packageinstaller-descriptions/"*) > "$dir_work"/pasted_descriptions.txt
+
+exec 6<"$dir_work"/pasted_descriptions.txt
+
+	# ____________________________________________________________________________________	
+	# Process each pm file.
+	# Remember, they should be in a one-to-one correspondence with the downloaded
+	# descriptions.
+	# ____________________________________________________________________________________	
+
+echo "Processing pm files ..."
+let pmcount=0
+
+for pmfile in $(ls "$dir_work/mx-packageinstaller-pkglist/"*)
+do
+
+	basepm=${pmfile##*/}
+	updatefile="$dir_work/updated_pm/$basepm"
+	touch "$updatefile"
+	
+		# ________________________________________________________________________________
+		# Cut out the descriptions and replace them.
+		#
+		# The states are:
+		#		0 - looking for <description>
+		#		1 - looking for </description>
+		#		2 - looking for end of file
+		#
+		# There is no need to save the description lines because we will simply replace
+		# them from the pasted file because the lines in it are in the same order as the
+		# files we are scanning.
+		#
+		# The -r on the read tells it to leave backslashes \ alone. There are lines in
+		# some of the pm files containing like \" and without the -r this would become
+		# just " which would lead to errors.
+		# ________________________________________________________________________________
+
+	let state=0
+	while read -r l
+	do
+		if [ "$state" -eq 0 ]
+		then	if [ "$l" = '<description>' ]
+				then	let state=1
+				else	echo "$l" >> "$updatefile"
+				fi
+		else	if [ "$state" -eq 1 ]
+				then	if [ "$l" = '</description>' ]
+						then	funPRINT_DES
+								let state=2
+						fi
+				else	echo "$l" >> "$updatefile"
+				fi
+		fi
+							
+	done < "$pmfile"
+
+	if [ "$state" -ne 2 ]
+	then	echo "$basepm"' - not in expected format - aborting' 
+			exit
+	fi
+
+	let pmcount=pmcount+1
+	if [ $((pmcount%10)) -eq 0 ]
+	then	echo "$pmcount"
+	fi
+	
+done
+
+exec 6<&-		# Close the pasted descriptions file.
+
+echo "$pmcount"
+
+# Until we have the new set of files formatted the way we are doing it here,
+# exit now, otherwise everything is different.
+exit
+
+	# ____________________________________________________________________________________	
+	# We don't want to send back pm files if they haven't changed.
+	# So do a diff on them.
+	# ____________________________________________________________________________________	
+
+echo "Checking for differences ..."
+let pmcount=0
+
+diff_file="$dir_work"/diff.txt
+touch "$diff_file"
+
+for pmfile in $(ls "$dir_work/mx-packageinstaller-pkglist/"*)
+do
+
+	basepm=${pmfile##*/}
+	updatefile="$dir_work/updated_pm/$basepm"
+
+		# To suppress all output:
+		#	diff "$pmfile" "updatefile"> /dev/null 2>&1
+
+	echo "$basepm" >> "$diff_file"
+	
+	diff "$pmfile" "$updatefile" >> "$diff_file"
+	let x=$?
+	if [ "$x" -ne 0 ]
+	then	echo 'different - '"$updatefile"
+			cp "$updatefile" "$dir_work"/diff_pm/
+	fi
+
+	let pmcount=pmcount+1
+	if [ $((pmcount%10)) -eq 0 ]
+	then	echo "$pmcount"
+	fi
+
+done
+
+echo "$pmcount"
+echo
+echo "Done"
+
+exit

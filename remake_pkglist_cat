@@ -1,0 +1,124 @@
+#!/bin/bash
+
+	# ====================================================================================
+	# Program:		remake_pkglist_cat
+	#
+	# Purpose:		Remake the category.dict file
+	#
+	# Author:		old giza
+	#
+	# Date:			2018.07.15
+	# ====================================================================================
+	
+	# ====================================================================================
+	# Pre-conditions:
+	#	The directory remake/ contains:
+	#		remake_cat										This script
+	#		download/mx-packageinstaller-categories/...		Transifex category language files
+	#
+	#	After this program is over, you will have:
+	#		work_cat/category.dict/						New category dictionary file
+	# ====================================================================================
+
+	# ====================================================================================
+	# Main line
+	# ====================================================================================
+
+	# ____________________________________________________________________________________	
+	# Create a work directory so we can repeat the program without affecting original files.
+	# ____________________________________________________________________________________	
+
+dir_download="download"
+dir_work="work-cat"
+
+if [ -d "$dir_work" ]
+then	rm -r "$dir_work"
+fi
+
+mkdir "$dir_work"
+cp -r "$dir_download"/mx-packageinstaller-categories	"$dir_work"
+
+	# ____________________________________________________________________________________	
+	# Add newline to last line of files if necessary.
+	# ____________________________________________________________________________________	
+
+for f in $(ls "$dir_work"/mx-packageinstaller-categories/*)
+do
+	x=$(tail --bytes=1 $f | od -An -tu)
+	if [ "$x" -ne 10 ]
+	then	echo >> "$f"
+	fi
+done
+
+	# ____________________________________________________________________________________	
+	# Read the English categories to use as section headers.
+	#	-O 1	start assigning at index 1
+	#	-t		remove trailing newline
+	# Then remove the English file so we don't include it in the translations.
+	# ____________________________________________________________________________________	
+
+declare -a engcat
+mapfile -O 1 -t engcat < <( cat "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.ts' )
+ncat=${#engcat[@]}
+rm "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.ts'
+
+	# ____________________________________________________________________________________	
+	# Get the languages of the category files.
+	# ____________________________________________________________________________________	
+
+declare -a catlang
+let ncatlang=0
+
+for f in $(ls -1 "$dir_work"/mx-packageinstaller-categories/*)
+do
+		# First get the language code from the file name.
+		# eg if the file name is mx-packageinstaller-categories_pt_BR.ts
+		# then get pt_BR. Remove everything up to and including the first underscore.
+		# Then remove the trailing . extension
+
+	flang=${f#*_}
+	flang=${flang%.*}
+
+	let ncatlang=ncatlang+1
+	catlang[ncatlang]="$flang"
+
+done
+
+	# ____________________________________________________________________________________	
+	# Paste the language category files together by category.
+	# And read them into an array.
+	# ____________________________________________________________________________________	
+
+paste -d "\n" $(ls "$dir_work/mx-packageinstaller-categories/"*) > "$dir_work"/pasted_categories.txt
+declare -a pastedcat
+mapfile -O 1 -t pastedcat < <( cat "$dir_work"/'pasted_categories.txt' )
+
+
+	# ____________________________________________________________________________________	
+	# Create the category dictionary file.
+	# ____________________________________________________________________________________	
+
+dict_file="$dir_work"/category.dict
+touch "$dict_file"
+
+let i=0
+
+while [ "$i" -lt "$ncat" ]
+do
+	let i=i+1
+	
+	if [ "$i" -ne 1 ]
+	then	echo >> "$dict_file"
+	fi
+	
+	echo '['"${engcat[i]}"']' >> "$dict_file"
+	let j=0
+	while [ "$j" -lt "$ncatlang" ]
+	do
+		let j=j+1
+		let pl=(i-1)*ncatlang+j
+		echo "${catlang[j]}"'='"${pastedcat[pl]}" >> "$dict_file"
+	done
+done
+
+exit
