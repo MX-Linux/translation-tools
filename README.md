@@ -40,3 +40,9 @@ Added this script:
 It takes the downloaded Transifex shell or Python translated files, puts them into
 a po/ directory, and creates the "object" files, putting them in separate
 language directories under a mo/ directory.
+
+2018.08.07
+
+Modified remake_desktops so that the translator does not have to put "Name=" or
+"Comment=" at the start of the lines. Just translating the English name of comment
+is OK.

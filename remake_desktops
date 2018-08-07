@@ -97,27 +97,20 @@ do
 	while read l
 	do
 	
-			# Construct a line number.
-
-		i=$((i+1))
-	
-			# Sometimes the translator will put their language code in the translation.
-			# Sometimes they won't. Sometimes they even translate Name or Comment.
-			# But we need the language code in order to sort. So standardize the lines
-			# by making each line begin Name[xx]= or Comment[xx]=
+			# Standardize the lines by making each line begin Name[xx]= or Comment[xx]=
 			# It's a simple odd/even test, since our uploaded file always contains
 			# Name and Comment in pairs. (Note that when you look at the file on
 			# Transifex it doesn't appear that way. That's because there are two
 			# lines that start Name=MX Updater. Of course, Transifex will only show
 			# that line once. But when it downloads, you get both lines.)
-
+			
+		i=$((i+1))
 		t=$((i%2))
 		if [ "$t" -eq 1 ]
 		then	ltype="Name"
 		else	ltype="Comment"
 		fi
 		
-			# The actual translation is whatever follows the =
 			# Note that there is always something there. Unlike with QT files where
 			# you can have "type="unfinished", and it relies on the QT routines to
 			# figure out what to substitute, with a text file like ours Transifex
@@ -129,17 +122,16 @@ do
 			# be displayed to a user regardless. And if they ever change on Transifex,
 			# that will show up here.
 			#
-			# First make sure there *is* an equals sign. The user may not have put one
-			# there. We want to abort and fix that.
-		
-		if [ $(expr index "$l" '=') -eq 0 ]
-		then	echo
-				echo "Error: No = found"
-				echo "File:  $f"
-				echo "Lnum:  $i"
-				echo "Line:  $l"
-				exit
-		fi
+			# The translator can translate a line like "Name=MX Sound" as:
+			#	Name=MX Son
+			#	Name[fr]=MX Son
+			#	Nom=MX Son
+			#	Nom[fr]=MX Son
+			#	=MX Son
+			#	MX Son
+			#
+			# We just strip off everything up to and including the "=", if it's there.
+			# Or take whatever they have put, if it's not. The one statement does it all.
 		
 		lbody=${l#*=}
 
