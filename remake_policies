@@ -1,41 +1,38 @@
 #!/bin/bash
 
 	# ====================================================================================
-	# remake_actions
+	# remake_policies
 	#
 	# (This is based on remake_desktop, which combines desktop files.)
 	#
-	# Recombine the different languages after download into one actions file.
+	# Recombine the different languages after download into one file. Then this file
+	# will be split up and copied manually into the individual policy files.
 	#
-	# What does this program actually do? We have for each language, the translations of
-	# the names and descriptions of each thunar custom action.
+	# What does this program actually do? We have for each language, the translations
+	# of the policy files text. There are 7 policy files each with one line of text
+	# to be translated - the message. Therefore, there are 7 lines in each language file.
 	#
-	# We have to format them into the proper xml line, and splice them together ready to
-	# be pasted into uca.xml. (We could go one step further and write them into the
-	# uca.xml file directly, but for the moment we will leave that to be done by hand.)
+	# We have to format these 7 lines into the proper xml line, and then splice them
+	# together so that all the languages for line 1 are juxtaposed into one block, all the
+	# languages for line 2 are juxtaposed, and so on.
 	#
-	# All this depends on the Transifex names and descriptions being in the same order
-	# as the actions in uca.xml. This should always be the case because Transifex is
-	# updated with the English names and descriptions from uca.xml. But a visual cross-
-	# check with the English should be done when pasting or before.
+	# We could go one step further and write these blocks into each xml file directly,
+	# but for the moment we will leave that to be done by hand.
+	#
+	# Do a visual check before copying by hand, that you are putting each into the
+	# right policy file. And retain the default message line, which contains the English
+	# which will be used for any language not in this list.
 	# ====================================================================================
 	
 	# ====================================================================================
 	# Pre-conditions:
 	#	The directory sort/ contains:
-	#		remake_actions		(this script)
-	#		download/		Transifex language files. Note: only the
-	#					files that actually have fairly complete
-	#					translations. Don't want to fill up uca.xml
-	#					with untranslated languages just because they
-	#					are part of the standard languages.
+	#		remake_policies			(this script)
+	#		download/			Transifex language files. We use all of them
+	#						even if they have no translations, since there
+	#						are only 7 policy files (currently).
 	#
-	#   Make sure you have removed the English file from the download directory. Its xml
-	#   format is different. So when doing the paste, keep the English original in uca.xml.
-	#
-	#   After this program is over, paste the output into uca.xml, over-writing the
-	#   name and description lines (but retaining the English and checking first with the
-	#   downloaded English file that they correspond).
+	#	Make sure you have removed the English file from the download directory.
 	# ====================================================================================
 		
 	# ____________________________________________________________________________________	
@@ -70,13 +67,11 @@ done
 	# ____________________________________________________________________________________	
 	# Process each language in turn to format their lines properly for xml.
 	# That is, turn:
-	#		name::Computar md5sum
-	#		desc::Mostrar valor del md5sum del ISO
+	#		Mise à jour basique
 	# into:
-	#		   <name xml:lang="es">Computar md5sum</name>
-	#		   <description xml:lang="es">Mostrar valor del md5sum del ISO</description>
+	#		    <message xml:lang="fr">Mise à jour basique</message>
 	#
-	# (Yes, indent 3 spaces.)
+	# (Yes, indent 4 spaces.)
 	# ____________________________________________________________________________________	
 
 for langfile in $(ls "$dir_work"/*)
@@ -98,7 +93,6 @@ do
 	echo -n > "$formattedfile"
 		
 	let c=0		# Line count
-	let t=0		# Type: 1-name, 2-desc
 	
 		# Read each line of the file.
 		
@@ -106,31 +100,13 @@ do
 	do
 	
 		let c=c+1
-		
-			# Strip off any header that may be there.
-			# i.e. the name:: or descr::
-			# (We don't require it to be there, it's only for their info.)
-			
-			# Check to see if the rest of the line is empty. That would be bad.
-			# Replace with English by hand if necessary.
-			
-		m=${l#*::}
-		if [ -z "$m" ]
+		if [ -z "$l" ]
 		then	echo "Line $c: nothing there - $l"
 				exit
 		fi
+				
+		echo '    <message xml:lang="'"$flang"'">'"$l"'</message>' >> "$formattedfile"
 		
-			# Prepare for name or description in xml.
-			
-		let t=t+1
-		if [ "$t" -eq 1 ]
-		then	ttext="name"
-		else	ttext="description"
-				let t=0				# Prepare for next pair
-		fi
-		
-		echo '   <'"$ttext"' xml:lang="'"$flang"'">'"$m"'</'"$ttext"'>' >> "$formattedfile"
-
 	done < "$langfile"
 
 done

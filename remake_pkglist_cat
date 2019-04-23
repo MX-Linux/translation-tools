@@ -13,11 +13,12 @@
 	# ====================================================================================
 	# Pre-conditions:
 	#	The directory remake/ contains:
-	#		remake_cat										This script
-	#		download/mx-packageinstaller-categories/...		Transifex category language files
+	#		remake_pkglist_cat				This script
+	#		download/mx-packageinstaller-categories/...	Transifex category language files
+	#								Note that we need the English file!
 	#
 	#	After this program is over, you will have:
-	#		work_cat/category.dict/						New category dictionary file
+	#		work_cat/category.dict/				New category dictionary file
 	# ====================================================================================
 
 	# ====================================================================================
@@ -58,9 +59,9 @@ done
 	# ____________________________________________________________________________________	
 
 declare -a engcat
-mapfile -O 1 -t engcat < <( cat "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.ts' )
+mapfile -O 1 -t engcat < <( cat "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.txt' )
 ncat=${#engcat[@]}
-rm "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.ts'
+rm "$dir_work"'/mx-packageinstaller-categories/mx-packageinstaller-categories_en.txt'
 
 	# ____________________________________________________________________________________	
 	# Get the languages of the category files.
@@ -72,7 +73,7 @@ let ncatlang=0
 for f in $(ls -1 "$dir_work"/mx-packageinstaller-categories/*)
 do
 		# First get the language code from the file name.
-		# eg if the file name is mx-packageinstaller-categories_pt_BR.ts
+		# eg if the file name is mx-packageinstaller-categories_pt_BR.txt
 		# then get pt_BR. Remove everything up to and including the first underscore.
 		# Then remove the trailing . extension
 
@@ -98,8 +99,8 @@ mapfile -O 1 -t pastedcat < <( cat "$dir_work"/'pasted_categories.txt' )
 	# Create the category dictionary file.
 	# ____________________________________________________________________________________	
 
-dict_file="$dir_work"/category.dict
-touch "$dict_file"
+dict_file="$dir_work"/'category.dict'
+echo -n > "$dict_file"
 
 let i=0
 

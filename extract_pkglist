@@ -11,13 +11,14 @@
 	#
 	#			This can probably be done better with awk or the like.
 	#			But it serves the purpose now.
-	#			Which is to simply for three consecutive lines lines like:
+	#			Which is to simply look for three consecutive lines like:
 	#				<tag>
 	#				line
 	#				</tag>
-	#			and extract the middle line. The "tag" can be anything. It is supplied
-	#			as an argument. The program assumes the tags are isloated on lines of
-	#			their own, and there is only one intervening data line.
+	#			and extract the middle line. The "tag" can be anything. It should
+	#			be supplied to the program as an argument. The program assumes the tags
+	#			are isolated on lines of their own, and there is only one intervening
+	#			data line.
 	#
 	#			This program is used to extract categories and descriptions from
 	#			.pm files used by mx-packageinstaller in the directory

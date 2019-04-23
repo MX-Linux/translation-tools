@@ -31,9 +31,12 @@
 	# But if they were downloaded using the getmxtrans.sh script, then will have
 	# the .ts extension because that script is not smart enough to distinguish
 	# between QT and script language files.
+	#
+	# 2019.01.02 This is no longer needed. The getmxtrans script was modified
+	#			 to give the downloads the right extension.
 	# __________________________________________________________________________
 	
-rename 's/\.ts$/\.po/' *.ts
+# rename 's/\.ts$/\.po/' *.ts
 
 	# __________________________________________________________________________
 	# Make the main directories.

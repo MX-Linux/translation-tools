@@ -1,0 +1,423 @@
+#!/bin/bash
+
+
+	# ====================================================================
+	# Script:	desktop_autoupdate
+	# Date:		2019.01.06
+	# Author:	old giza
+	#
+	# Using the downloaded, sorted file of desktop entries, update all the
+	# relevant desktop files. This is an alternative to doing it by hand,
+	# one-by-one, copying from the all.txt file and pasting into the
+	# correct desktop files.
+	#
+	# Note that one repo can contain more than one desktop file. And one
+	# desktop entry on Transifex can be used for more than one desktop
+	# file.
+	#
+	# So the approach we take is to go by desktop file. Find its
+	# corresponding entries in the sorted file, see if they are different,
+	# and if so, use those to replace the existing entries (and maybe
+	# in the future actually push the update; because we go by desktop
+	# file, we could be pushing several times for the same repo).
+	#
+	# Pre-requisites:
+	#
+	# (1) You have downloaded the language files for mx-all-desktop-entries
+	#     and run the remake_desktops scripts to produce the all.txt file
+	#     which you have copied to this auto directory as transifex.txt.
+	# (2) The desktop_driver.txt file is up to date. It contains a list of
+	#     all the desktop files, their location, and their relation to the
+	#     entries in all.txt.
+	#
+	# Post actions:
+	# The above will handle all desktop files. Every entry in the apps'
+	# desktop files have been input into Transifex, so there are no
+	# special cases. Except for mx-goodies/system-locales-mx.desktop
+	# It has these extra entries that we cannot put into Transifex because
+	# we are not covering their languages:
+	#
+	# galician	*Comment[gl]=Configuración local por defecto para o ambiente
+	# malayalam	*Comment[ml]=സിസ്റ്റം പരിസരത്തിനു വേണ്ടിയുളള സഹജമായ ലൊക്കേല്‍
+	# Norwegian	*Comment[no]=Standardlokale for systemmiljøet
+	# tamil		*Comment[ta]=கணினி சூழலுக்கு முன்னிருப்பு உள்ளார்ந்த இடம்
+	# vietnamese	*Comment[vi]=Miền địa phương mặc định cho môi trường hệ thống
+	#
+	# You can add them in after this script runs.
+	# ====================================================================
+
+
+	# ====================================================================
+	# Functions
+	# ====================================================================
+
+	# ____________________________________________________________________
+	#
+	# Extract the entries from the desktop file.
+	# We note the Name= and Comment= entries specially because we need one
+	# or both to match against the Transifex file.
+	# ____________________________________________________________________
+
+function funextractdesktop
+{
+	desktopname=''
+	desktopcomment=''
+	let ndesk=0
+	declare -ag deskline
+	
+	while read l
+	do
+		case $l in
+		
+		Name=* )
+			desktopname=${l#Name=}
+			let ndesk=ndesk+1
+			deskline[ndesk]="$l"
+			;;
+		Name[* )
+			let ndesk=ndesk+1
+			deskline[ndesk]="$l"
+			;;
+		Comment=* )
+			desktopcomment=${l#Comment=}
+			let ndesk=ndesk+1
+			deskline[ndesk]="$l"
+			;;
+		Comment[* )
+			let ndesk=ndesk+1
+			deskline[ndesk]="$l"
+			;;
+		* )
+			;;
+		esac
+	
+	done < "$desktopfilespec"
+
+	if [ "$ndesk" -eq 0 ]
+	then	echo "Could not find any desktop entries in desktop file $desktopfilespec" | tee -a "$summaryfile"
+			exit
+	fi
+
+	if [ -z "$desktopname" ]
+	then	echo "Could not find Name= entry in desktop file $desktopfilespec" | tee -a "$summaryfile"
+			exit
+	fi
+
+	if [ -z "$desktopcomment" ]
+	then	echo "Could not find Comment= entry in desktop file $desktopfilespec" | tee -a "$summaryfile"
+			exit
+	fi
+	
+	if [ "$debug" -eq 1 ]
+	then	echo
+			echo "desktop name: $desktopname"
+			echo "desktop comment: $desktopcomment"
+			let i=0
+			while [ "$i" -lt "$ndesk" ]
+			do
+				let i=i+1
+				echo "${deskline[i]}"
+			done
+	fi
+	
+}
+
+	# ____________________________________________________________________
+	#
+	# Extract the Transifex entries for this desktop file.
+	# We look it up by name and comment. Usually the name is enough, but
+	# sometimes we need the comment too, so we just check for both
+	# regardless.
+	#
+	# So, the first match on name is only provisional until we read
+	# the first comment in that section of the Transifex file.
+	# If that matches, OK we continue extracting.
+	# If it doesn't, we reset, and start looking for the name again.
+	# ____________________________________________________________________
+
+function funextracttransifex
+{
+	let found=0
+	let ntrans=0
+	declare -ag transline
+
+	while read l
+	do
+
+		case "$l" in
+
+		'Name='* )
+			transifexname=${l#Name=}
+			if [ "$found" -eq 1 ]
+			then	let found=0									# hit next group, we are done, could break here
+			else	if [ "$desktopname" = "$transifexname" ]
+					then	let found=1							# found our group, unless we need comment to verify
+							let ntrans=1
+							transline[ntrans]="$l"
+					fi
+			fi
+			;;
+		
+		'Name['* )
+			if [ "$found" -eq 1 ]
+			then	let ntrans=ntrans+1
+					transline[ntrans]="$l"
+			fi
+			;;
+		
+		'Comment='* )
+			transifexcomment=${l#Comment=}
+			if [ "$found" -eq 1 ]
+			then	if [ "$desktopcomment" = "$transifexcomment" ]
+					then	let ntrans=ntrans+1
+							transline[ntrans]="$l"
+					else	let found=0
+							let ntrans=0
+					fi
+			fi
+			;;
+		
+		'Comment['* )
+			if [ "$found" -eq 1 ]
+			then	let ntrans=ntrans+1
+					transline[ntrans]="$l"
+			fi
+			;;
+		
+		* )
+			echo "Bad line in Transifex file" | tee -a "$summaryfile"
+			echo "$l" | tee -a "$summaryfile"
+			exit
+			;;
+		
+		esac
+		
+	done < "$transifexfile"
+	
+	if [ "$ntrans" -eq 0 ]
+	then	echo "Could not find desktop name (and maybe comment) in Transifex file while processing $desktopfilespec" \
+				| tee -a "$summaryfile"
+			exit
+	fi
+	
+	if [ "$debug" -eq 1 ]
+	then	echo
+			echo "Transifex:"
+			let i=0
+			while [ "$i" -lt "$ntrans" ]
+			do
+				let i=i+1
+				echo "${transline[i]}"
+			done
+	fi
+
+}
+
+	# ____________________________________________________________________
+	#
+	# Do we have any new entries in Transifex file for this desktop?
+	# ____________________________________________________________________
+
+function funcompareentries
+{
+
+	let different=0
+	
+	if [ "$ntrans" -ne "$ndesk" ]
+	then	let different=1
+			return
+	fi
+	
+	let i=0
+	while [ "$i" -lt "$ntrans" ]
+	do
+		let i=i+1
+		if [ "${transline[i]}" != "${deskline[i]}" ]
+		then	let different=1
+				return
+		fi
+	done
+
+}
+
+	# ____________________________________________________________________
+	#
+	# Create a new desktop file using the old desktop file but replacing
+	# its Name and Comment lines with the entries from the Transifex file.
+	#
+	# Read each line of the current desktop file.
+	# If it's the beginning of the name/comment block, output the new data
+	# If it's any other line of the name/comment block, ignore it.
+	# If it's any other line at all, output that.
+	# ____________________________________________________________________
+
+function funcreatenewfile
+{
+
+echo -n > "$createdfile"
+
+while read ll
+do
+
+	case "$ll" in
+	Name=* )
+		let i=1
+		while [ "$i" -le "$ntrans" ]
+		do
+			echo "${transline[i]}" >> "$createdfile"
+			let i=i+1
+		done
+		;;
+	Name[* )
+		;;
+	Comment* )
+		;;
+	* )
+		echo "$ll" >> "$createdfile"
+		;;
+	esac
+
+done < $desktopfilespec
+
+}
+
+	# ____________________________________________________________________
+	#
+	# Replace the desktop file with the new one.
+	# ____________________________________________________________________
+
+function funreplacedesktop
+{
+	cp "$desktopfilespec" 'current/'"$desktopfilename"
+
+	if [ "$programmode" = 'd' ]
+	then	return
+	fi
+
+	rm "$desktopfilespec"
+	cp "$createdfile" "$desktopfilespec"
+}
+
+	# ====================================================================
+	# Main line
+	# ====================================================================
+
+let debug=0
+# let debug=1
+
+	# ____________________________________________________________________
+	#
+	# Some general variables.
+	# ____________________________________________________________________
+
+driverfile='desktop_driver.txt'
+transifexfile='transifex.txt'
+basedirectory='/home/geoff/geoff.files/mx_translations/repos'
+summaryfile='desktop_summary.txt'
+
+echo -n > "$summaryfile"
+
+	# ____________________________________________________________________
+	#
+	# Should do dry runs until there are no errors.
+	# The dry run will stop at the first error it finds, so have to
+	# repeat until it goes through error free.
+	# ____________________________________________________________________
+
+read -p "Do a dry run or do updates [d-dry run, u-update]? " programmode
+
+case "$programmode" in
+
+d ) echo "Doing a dry run" | tee -a "$summaryfile" ;;
+u ) echo "Updating"  | tee -a "$summaryfile" ;;
+* ) echo "Must enter either 'd' or 'u'" | tee -a "$summaryfile"; exit;;
+
+esac
+
+echo
+
+	# ____________________________________________________________________
+	#
+	# The temporary directories.
+	# ____________________________________________________________________
+
+if [ -d current ]
+then	rm -f current/*
+else	mkdir current
+fi
+
+if [ -d created ]
+then	rm -f created/*
+else	mkdir created
+fi
+
+	# ____________________________________________________________________
+	#
+	# Process each driver file entry in turn.
+	#
+	# (Instead of using a driver file, which we have to keep up to date,
+	# we could have just searched repo directories for *.desktop files.)
+	# ____________________________________________________________________
+
+let driverline=0
+while read desktopdir desktopfilename
+do
+	let driverline=driverline+1
+	
+		# Ignore comment lines.
+		
+	case "$desktopdir" in
+	'#'* )	continue ;;
+	esac
+	
+	if [ -z "$desktopdir" ] || [ -z "$desktopfilename" ]
+	then	echo "Line $driverline : Desktop directory or file name blank" | tee -a "$summaryfile"
+			exit
+	fi
+
+		# Check that the desktop file exists.
+	
+	desktopfilespec="$basedirectory/$desktopdir/$desktopfilename"
+	
+	if [ "$debug" -eq 1 ]
+	then	echo "$desktopfilespec"
+	fi
+	
+	if [ ! -f "$desktopfilespec" ]
+	then	echo "Could not find this desktop file: $desktopfilespec" | tee -a "$summaryfile"
+			exit
+	fi
+
+		# Extract Name and Comment entries from this desktop file.
+		#
+		# We get back:
+		#	ndesk				number of Name and Comment lines
+		#	deskline[]			the Name and Comment lines
+		#	desktopname			the Name=value
+		#	desktopcomment		the Comment=value
+		
+	funextractdesktop
+	
+		# Find the corresponding entries in the Transifex file.
+		#
+		# We get back:
+		#	ntrans				number of Name and Comment lines
+		#	transline[]			the Name and Comment lines
+		
+	funextracttransifex
+
+		# Now compare to see if any differences.
+	
+	funcompareentries
+	
+	if [ "$different" -eq 0 ]
+	then	echo "no change - $desktopfilename" | tee -a "$summaryfile"
+	else	echo "different - $desktopfilename" | tee -a "$summaryfile"
+			createdfile='created/'"$desktopfilename"
+			funcreatenewfile
+			funreplacedesktop
+	fi
+	
+done < "$driverfile"
+
+exit

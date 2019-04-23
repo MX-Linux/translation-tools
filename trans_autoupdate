@@ -1,0 +1,196 @@
+#!/bin/bash
+
+
+	# ====================================================================
+	# Script:	trans_autoupdate
+	# Date:		2019.02.02
+	# Author:	old giza
+	#
+	# Using the downloaded .ts and .po files for QT, Python and shell
+	# apps, replace the existing files in each app. For the .po files,
+	# make the .mo files too.
+	#
+	# Note that we don't update the .pro files (for the QT apps) to make
+	# sure that all the languages are represented there. That is a
+	# manual step.
+	#
+	# Note that one repo can contain both .ts and .po/.mo files.
+	# Currently, just mx-usb-unmounter.
+	#
+	# 
+	#
+	# Pre-requisites:
+	#
+	# (1) You should first ensure that all the repos are up to date. That
+	#     is, you should go into each repo and do a git pull. See the wiki
+	#     instructions for doing a refresh. 
+	# (2) You must have downloaded the language files for all the apps using
+	#     the "0" option of getmxtrans.
+	# (3) Ensure the trans_driver.txt file is up to date. It contains a list of all
+	#     the translation files to be updated, and their relation to the
+	#     Transifex downloads.
+	#
+	# ====================================================================
+
+
+	# ====================================================================
+	# Main line
+	# ====================================================================
+
+	# ____________________________________________________________________
+	#
+	# Some general variables.
+	# ____________________________________________________________________
+
+driverfile='trans_driver.txt'
+downloadbase='/home/geoff/geoff.files/mx_translations/tools/api/downloads'
+repobase='/home/geoff/geoff.files/mx_translations/repos'
+summaryfile='trans_summary.txt'
+
+echo -n > "$summaryfile"
+
+	# ____________________________________________________________________
+	#
+	# Should do dry runs until there are no errors.
+	# The dry run will stop at the first error it finds, so have to
+	# repeat until it goes through error free.
+	# ____________________________________________________________________
+
+read -p "Do a dry run or do updates [d-dry run, u-update]? " programmode
+
+case "$programmode" in
+
+d ) echo "Doing a dry run" | tee -a "$summaryfile" ;;
+u ) echo "Updating"  | tee -a "$summaryfile" ;;
+* ) echo "Must enter either 'd' or 'u'" | tee -a "$summaryfile"; exit;;
+
+esac
+
+echo
+
+	# ____________________________________________________________________
+	#
+	# Work directory.
+	# (We could make our files directly in each translation directory
+	# but we will use a work directory anyway.)
+	# ____________________________________________________________________
+
+workdir="work"
+
+if [ -d "$workdir" ]
+then	rm -r "$workdir"
+fi
+
+mkdir "$workdir"
+
+	# ____________________________________________________________________
+	#
+	# Process each driver file entry in turn.
+	# ____________________________________________________________________
+
+let driverline=0
+while read repodir transtype downloadname
+do
+	let driverline=driverline+1
+	
+		# Ignore comment lines.
+		
+	case "$repodir" in
+	'#'* )	continue ;;
+	esac
+
+		# Tell where we are
+		
+	echo "$repodir $transtype $downloadname"  | tee -a "$summaryfile"
+	
+	if [ -z "$repodir" ] || [ -z "$transtype" ]
+	then	echo "Line $driverline : Repo directory or translation type blank" | tee -a "$summaryfile"
+			exit
+	fi
+	
+		# Check that the translation type is either "ts" or "po".
+		# And assign its directory name.
+	
+	case "$transtype" in
+	'ts' )	subdir='translations';;
+	'po' )	subdir='translations_script';;
+	* )		echo "Line $driverline : Trans type not ts or po" | tee -a "$summaryfile"
+			exit;;
+	esac
+
+		# Check that the translation directory exists.
+		
+	transdir="$repobase/$repodir/$subdir"
+	if [ ! -d "$transdir" ]
+	then	echo "Could not find translation directory: $transdir" | tee -a "$summaryfile"
+			exit
+	fi
+	
+		# If there is 3rd column, use that for the api download name;
+		# otherwise use the repo directory. (But remember, some repo directory have a
+		# sub-directory - mx-tweak/tweak - so remove that sub-directory.)
+		
+	if [ -z "$downloadname" ]
+	then	downloadname=${repodir%%/*}
+	fi
+
+		# Check for existence of download directory
+
+	downloaddir="$downloadbase/$downloadname"
+	if [ ! -d "$downloaddir" ]
+	then	echo "Could not find api download directory: $downloaddir" | tee -a "$summaryfile"
+			exit
+	fi
+	
+		# Clear out the work directory (but leave it there).
+		# The f handles the case where there are no files.
+		# Copy the downloaded files to the work directory
+
+	rm -rf "$workdir"/*
+	cp -r "$downloaddir"/* "$workdir"
+	
+		# For po files, create the mo files.
+		
+	case "$transtype" in
+	'po' )
+		let pocount=0
+		mkdir "$workdir/"'mo'
+		mkdir "$workdir/"'po'
+		
+		for filespec in $(ls "$workdir"/*.po)
+		do
+			let pocount=pocount+1
+			pofile=$(basename "$filespec")
+			filepart=${pofile%.*}		# remove extension (.po)
+			langpart=${filepart#*_}		# should be no _ embedded in file name part
+			basepart=${filepart%%_*}	# because could be like _pt_BR
+			
+			modir="$workdir/"'mo/'"$langpart"
+			mkdir "$modir"
+			msgfmt -o "$modir"'/'"$basepart"'.mo' "$filespec"
+	
+			mv "$filespec" "$workdir/"'po/'
+
+		done
+		
+		if [ "$pocount" -eq 0 ]
+		then	echo "Expected .po files but found none" | tee -a "$summaryfile"
+				exit
+		fi
+		
+		;;
+	esac
+
+		# For an update, remove the existing translation directory and copy the work directory there.
+
+	case "$programmode" in
+	u )
+			rm -r "$transdir"
+			cp -r "$workdir" "$transdir"
+			;;
+	esac
+			
+
+done < "$driverfile"
+
+exit

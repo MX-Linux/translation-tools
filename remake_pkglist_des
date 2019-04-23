@@ -1,13 +1,13 @@
 #!/bin/bash
 
 	# ====================================================================================
-	# Program:		remake_pkglist_des
+	# Program:	remake_pkglist_des
 	#
-	# Purpose:		Remake each pm file, using the downloaded description files.
+	# Purpose:	Remake each pm file, using the downloaded description files.
 	#
-	# Author:		old giza
+	# Author:	old giza
 	#
-	# Date:			2018.07.15
+	# Date:		2018.07.15
 	#
 	# What does this program actually do? We have for each language, the translations of
 	# the package descriptions. (The package name remains invariant because it's the name
@@ -33,13 +33,14 @@
 	# ====================================================================================
 	# Pre-conditions:
 	#	The directory remake/ contains:
-	#		remake_des										This script
+	#		remake_pkglist_des				This script
 	#		download/mx-packageinstaller-descriptions/...	Transifex language files for descriptions
-	#		download/mx-packageinstaller-pkglist/...		The original pm files
+	#								Note that we need the English file!
+	#		download/mx-packageinstaller-pkglist/...	The corresponding pm files - remove the non .pm files
 	#
 	#	After this program is over, you will have:
-	#		work-des/updated_pm/							Updated pm files
-	#		work-des/diff_pm/								Only the ones that changed
+	#		work-des/updated_pm/				Updated pm files
+	#		work-des/diff_pm/				Only the ones that changed
 	# ====================================================================================
 
 	# ====================================================================================

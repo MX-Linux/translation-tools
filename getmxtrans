@@ -1,33 +1,90 @@
 #!/bin/bash
 
 	# ====================================================================
-	# Script:	getmxtrans.sh
+	# Script:	getmxtrans
 	# Date:		2016.10.06
 	# Author:	old giza
 	#
-	# Download the language files for one resource.
+	# Download the language files for one resource -or all.
 	# This is less work than using the transifex web interface to download
 	# the files one by one.
+	#
+	# When we say "all", we mean all the ones related to MX which are the
+	# ones that begin "mx-" and a few others. And note that some of these
+	# are not actively used any more, but get downloaded anyway.
 	#
 	# Note that this script uses several bash-specific features not
 	# available in the dash shell (pointed to by sh).
 	# ====================================================================
 
+
+	# ====================================================================
+	# Functions
+	# ====================================================================
+
+	# ____________________________________________________________________
+	#
+	# Download the language files for one resource.
+	# ____________________________________________________________________
+
+function fundownload
+{
+	resource=${reslist[r]}
+	extension=${restype[r]}
+
+	echo
+	
+		# ________________________________________________________________
+		#
+		# Prepare the resource directory.
+		# ________________________________________________________________
+
+	if [ ! -e "downloads/$resource" ]
+	then	echo "making $resource sub-directory"
+			mkdir "downloads/$resource"
+	else	if [ ! -d "downloads/$resource" ]
+			then	echo "'""downloads/$resource""'"" exists but is not a directory"
+					exit
+			else	echo "Removing previous downloads in $resource directory"
+					rm 'downloads/'"$resource"'/'*
+			fi
+	fi
+
+		# ________________________________________________________________
+		#
+		# Download the languages for this resource.
+		# ________________________________________________________________
+
+	echo "Downloading translations files for $resource ..."
+
+	for l in $alllang
+	do
+		outfile="downloads/$resource/$resource"'_'"$l"'.'"$extension"
+		getphrase="$url"'resource/'"$resource"'/translation/'"$l"'/?file'
+#		echo
+#		echo "$l $outfile $getphrase"
+
+		curl -s -L --user "$userpass" -o "$outfile" -X GET "$getphrase"
+	done
+
+}
+
+	# ====================================================================
+	# Mainline
+	# ====================================================================
+
 if [ $# -ne 2 ]
-then	echo "getmxtrans.sh: incorrect number of arguments"
-	echo "usage: getmxtrans.sh txuser txpassword"
+then	echo "getmxtrans: incorrect number of arguments"
+	echo "usage: getmxtrans txuser txpassword"
 	exit
 fi
 
 echo
-echo "getmxtrans.sh"
+echo "getmxtrans"
 echo "Download from Transifex the translation files for a resource"
 echo
 
-stlang="am ca cs de el en es fi fr hi hr hu it ja kk lt nl pl pt pt_BR ro ru sk sv tr uk zh_TW"
-exlang="ar nb bg"
-alllang="$stlang"
-#alllang="$stlang $exlang"
+alllang="am ar bg ca cs da de el es et eu fa fi fr he_IL hi hr hu id is it ja ja_JP kk ko lt mk nb nl pl pt pt_BR ro ru sk sl sq sr sv tr uk zh_CN zh_TW"
 
 userpass="$1"':'"$2"
 url='https://www.transifex.com/api/2/project/antix-development/'
@@ -56,26 +113,30 @@ url='https://www.transifex.com/api/2/project/antix-development/'
 	# isn't a big deal.
 	#
 	# But instead, we will use the API to get a current list of all
-	# resources starting "mx-". One exception: also get resource ddm-mx.
+	# resources starting "mx-" together with a few explicit exceptions.
 	#
 	# Note that this name is the *Transifex* name of the resource. In
 	# a few cases, this differs from the github app name:
 	#
-	# 	app			Transifex
+	# 	app					Transifex
 	#	-----------------	----------------------
 	#	mx-usb-unmounter	mx-usb-unmounter
-	#				mx-usb-unmounter-start
+	#						mx-usb-unmounter-start
 	#	mx-test-installer	mx-test-repo-installer
 	#
 	# Which means that the directory we create (which is named by
 	# resource) does not always correspond to the repo name. No problem.
 	# It's just a placeholder for the files till they get copied
 	# elsewhere.
+	# ____________________________________________________________________
+	
+	# ____________________________________________________________________
 	#
 	# We use process substitution to put the output of the piped commands
 	# into an array using the mapfile command.
 	#
 	# (1) So first we get a list of resource info that looks like this ...
+	#	[
 	#    {
 	#        "source_language_code": "en", 
 	#        "name": "adddesktop", 
@@ -85,19 +146,75 @@ url='https://www.transifex.com/api/2/project/antix-development/'
 	#        "categories": null
 	#    }, 
 	#    ...
-	# (2) Select the slug lines and print the 4th field (resource name)
-	#     based on field separator " instead of space.
-	# (3) Select the mx- (or ddm-mx) resources.
-	# (4) map them into an array, starting at index 1 and removing
+	# (2) We use jq to extract the slug and i18n_type lines to get this:
+	#		adddesktop
+	#		PO
+	#		amendfile
+	#		QT
+	#		...
+	#     Note the use of -r on jq command to remove quoting of output.
+	# (3) Then awk to select the resources we are interested in.
+	# (4) map the lines into an array, starting at index 1 and removing
 	#     trailing newlines.
 	# ____________________________________________________________________
 
-declare -a reslist
+declare -a jqlist
 
-mapfile -O 1 -t reslist < <( \
-curl -L --user "$userpass" -X GET "$url"'resources/'	\
-| awk -v FS='"' '/"slug":/ {print $4}'			\
-| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print}' )					\
+mapfile -O 1 -t jqlist < <( \
+curl -s -L --user "$userpass" -X GET "$url"'resources/' \
+| jq -r '.[] | .slug , .i18n_type' \
+| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print; getline; print}' )
+
+	# ____________________________________________________________________
+	#
+	# Put the jq lines into two arrays, one for the resource name, the
+	# other for the resource type, which we will use for extension.
+	# (There is probably an easier way to do this, somehow doing it all
+	# in the above command, creating both arrays at once.)
+	# ____________________________________________________________________
+
+
+njq=${#jqlist[@]}
+
+let x=njq%2
+if [ "$x" -eq 1 ]
+then	echo "odd number of lines!"
+		exit
+fi
+
+
+declare -a reslist
+declare -a restype
+
+let i=1
+
+let nr=njq/2
+
+while [ $i -le $nr ]
+do
+
+	let j=2*i-1
+	reslist[i]=${jqlist[j]}
+	
+	let k=j+1
+	x=${jqlist[k]}
+	
+	case "$x" in
+	HTML )	y='html';;
+	PO )	y='po';;
+	QT )	y='ts';;
+	TXT )	y='txt';;
+	* )		echo "Unknown resource type $x"
+			exit;;
+	esac
+
+	restype[i]="$y"
+	
+#	echo ${reslist[i]} ${restype[i]}
+	
+	let i=i+1
+	
+done
 
 	# ____________________________________________________________________
 	#
@@ -148,9 +265,10 @@ done
 	#
 	# Pick the resource whose translations we want to download.
 	# Edit the reply to avoid junk.
+	# ${#r} means the number of characters in r, etc.
 	# ____________________________________________________________________
 
-read -p "Resource number? " r
+read -p "Enter resource number (or 0 for all) - " r
 
 if [ -z $r ]
 then	echo "No resource selected"
@@ -169,21 +287,18 @@ then	echo "Number too large"
 fi
 
 if [ $r -gt $nr ]
-then	echo "Number out of range 1 - $nr"
+then	echo "Number out of range 0 - $nr"
 	exit
 fi
 
-if [ $r -eq 0 ]
-then	echo "No resource selected"
-	exit
-fi
-
-resource=${reslist[r]}
+#if [ $r -eq 0 ]
+#then	echo "No resource selected"#
+#	exit
+#fi
 
 	# ____________________________________________________________________
 	#
-	# Prepare the directory.
-	# Make them if necessary, and clear out old files.
+	# Prepare the download directory.
 	# ____________________________________________________________________
 
 if [ ! -e "downloads" ]
@@ -195,35 +310,19 @@ else	if [ ! -d "downloads" ]
 	fi
 fi
 
-if [ ! -e "downloads/$resource" ]
-then	echo "making $resource sub-directory"
-	mkdir "downloads/$resource"
-else	if [ ! -d "downloads/$resource" ]
-	then	echo "'""downloads/$resource""'"" exists but is not a directory"
-		exit
-	else	echo "removing previous downloads in $resource directory"
-		rm 'downloads/'"$resource"'/'*
-	fi
-fi
-
 	# ____________________________________________________________________
 	#
-	# Download the translations.
-	# Note that we give extension .ts to all (some will be .po, so check)
+	# Download one - or all.
 	# ____________________________________________________________________
 
-echo
-echo "Downloading translations files for $resource ..."
-
-for l in $alllang
-do
-	outfile="downloads/$resource/$resource"'_'"$l"'.ts'
-	getphrase="$url"'resource/'"$resource"'/translation/'"$l"'/?file'
-	echo
-	echo "$l $outfile $getphrase"
-
-	curl -L --user "$userpass" -o "$outfile" -X GET "$getphrase"
-
-done
+if [ "$r" -ne 0 ]
+then	fundownload
+else	let r=0
+		while [ $r -lt $nr ]
+		do
+			let r=r+1
+			fundownload
+		done
+fi
 
 exit

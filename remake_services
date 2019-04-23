@@ -42,20 +42,20 @@
 	# ====================================================================================
 	# Pre-conditions:
 	#	The directory sort/ contains:
-	#		remake_services.sh		(this script)
+	#		remake_services				(this script)
 	#		gazelle-services-categories.txt		List of English categories
-	#											that was extracted from services.list
-	#											and uploaded to Transifex
+	#							that was extracted from services.list
+	#							and uploaded to Transifex
 	#		gazelle-services-descriptions.txt	List of English services descriptions
-	#											that was extracted from services.list
-	#											and uploaded to Transifex (not actually
-	#											used in this program)
-	#		gazelle-services-list.txt			The English lines from services.list,
-	#											of the form name=category, description
-	#											with comments and other languages removed
-	#		download/categories/...				Transifex language files for categories
-	#		download/descriptions/...			Transifex language files for descriptions
-	#												(They should match in number and language)
+	#							that was extracted from services.list
+	#							and uploaded to Transifex (not actually
+	#							used in this program)
+	#		gazelle-services-list.txt		The English lines from services.list,
+	#							of the form name=category, description
+	#							with comments and other languages removed
+	#		download/categories/...			Transifex language files for categories
+	#		download/descriptions/...		Transifex language files for descriptions
+	#							(They should match in number and language)
 	#
 	#	Make sure you have removed the English category and description files from the
 	#	download directories, so they don't get processed.
@@ -152,9 +152,9 @@ for catfile in $(ls "$dir_work"/categories/*)
 do
 
 		# First get the language code from the file name.
-		# eg if the file name is gazelle-services-categories_pt_BR.ts
+		# eg if the file name is gazelle-services-categories_pt_BR.txt
 		# then get pt_BR. Remove everything up to and including the first underscore.
-		# Then remove the trailing .ts
+		# Then remove the trailing .txt
 		
 	flang=${catfile#*_}
 	flang=${flang%.*}
@@ -165,7 +165,7 @@ do
 	
 		# Construct their description file name
 		
-	desfile="$dir_work"/descriptions/gazelle-services-descriptions'_'"$flang"'.ts'
+	desfile="$dir_work"/descriptions/gazelle-services-descriptions'_'"$flang"'.txt'
 	
 	echo "$flang"
 	

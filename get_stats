@@ -1,0 +1,163 @@
+#!/bin/bash
+
+	# ====================================================================================
+	# get_stats
+	#
+	# Which Transifex resouces have significant updates since last pushed to GitHub?
+	#
+	# For each Transifex resource we are interested in, get the stats for each language.
+	# Then inspect each language's stats. Only consider languages that are >30% complete.
+	# If that's OK, check the date of last update and see if it's greater than the last
+	# push date (supplied as input to the program). Make a list of the qualifying
+	# resources.
+	# ====================================================================================
+	
+	# ====================================================================================
+	# Pre-conditions:
+	#	The directory get_stats/ contains:
+	#		get_stats							(this script)
+	#
+	#	After this program is over, inspect the file report.stats
+	# ====================================================================================
+
+echo
+echo "get_stats"
+echo "Find which resources have updates since last general push"
+echo
+
+if [ $# -ne 3 ]
+then	echo "get_stats: incorrect number of arguments"
+	echo "usage: get_stats txuser txpassword pushdate"
+	exit
+fi
+
+	# ____________________________________________________________________________________	
+	# Verify date format.
+	# Just check for digits, don't check for reasonable numbers.
+	# Convert to seconds since 1970.
+	# ____________________________________________________________________________________	
+
+[[ "$3" =~ [[:digit:]]{4}\-[[:digit:]]{2}\-[[:digit:]]{2} ]]
+if [ "$?" -ne 0 ]
+then	echo "Push date must be in format yyyy-mm-dd"
+		exit
+fi
+push=$(date -d "$3" +%s)
+		
+	# ____________________________________________________________________________________	
+	# Create a work directory so we can repeat the program without affecting original files.
+	# ____________________________________________________________________________________	
+	
+dir_work="work"
+
+if [ -d "$dir_work" ]
+then	rm -r "$dir_work"
+fi
+
+mkdir "$dir_work"
+		
+	# ____________________________________________________________________________________	
+	# And the report file.
+	# ____________________________________________________________________________________	
+
+report_file="report.stats"
+echo > "$report_file"
+
+	# ____________________________________________________________________________________	
+	# Get a list of the resources we are interested in.
+	# (Same idea as in getmxtrans script.)
+	# ____________________________________________________________________________________
+	
+userpass="$1"':'"$2"
+url='https://www.transifex.com/api/2/project/antix-development/'
+
+declare -a reslist
+
+mapfile -O 1 -t reslist < <( \
+curl -L --user "$userpass" -X GET "$url"'resources/'	\
+| awk -v FS='"' '/"slug":/ {print $4}'			\
+| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print}' )
+
+nr=${#reslist[@]}
+
+	# ____________________________________________________________________________________	
+	# Get the stats for each resource.
+	# ____________________________________________________________________________________	
+
+let r=0
+while [ "$r" -lt "$nr" ]
+do
+	let r=r+1
+	
+			# Get the stats
+		
+		resource=${reslist[r]}
+		echo "$resource ..."
+		
+		statfile="$dir_work/$resource"'.stats'
+		
+		curl -L --user "$userpass" -X GET "$url"'resource/'"$resource"'/stats/' > "$statfile"
+
+			# Use jq to get a list of the languages for this resource.
+			# It will look like this:
+			# ["el","en","is","am","it","nl_BE","cs","ar","eu", ... ,"sl","jbo","he_IL","nb_NO"]	
+		
+		ltext=$(jq -c 'keys_unsorted' "$statfile")
+		ltext=$(echo "$ltext" | sed 's/"// g')
+		ltext="${ltext#*[}"
+		ltext="${ltext%]*}"
+		
+		declare -a langlist
+		mapfile -O 1 -d ',' -t langlist < <( echo "$ltext" )
+		nl=${#langlist[@]}
+	
+			# Use jq to extract the completion % and date of last update for each language
+			# The lines will look like:
+			#	{
+			#	  "completed": "34%",
+			#	  "last_update": "2018-11-11 02:22:15"
+			#	}
+			#
+			# We extract the completion percentage as a number, eg 10
+			# And we convert the update date (just the date portion, not the time) to
+			# seconds since 1970.
+
+		let l=0
+		echo "$resource" >> "$report_file"
+		
+		while read txt
+		do
+			case "$txt" in
+			'{' )
+					let l=l+1
+					lang=${langlist[l]}
+					# echo -n "$lang"', '
+					;;
+			*'completed'* )
+					c=${txt#*:}
+					c=${c#*\"}
+					c=${c%\%*}
+					;;
+			*'last_update'* )
+					u=${txt#*:}
+					u=${u#*\"}
+					u=${u%% *}
+					s=$(date -d "$u" +%s)
+					;;
+			'}' )
+					if [ \( "$c" -ge 30 \) -a \( "$s" -gt "$push" \) ]
+					then	echo "    $lang" "$c"'%' "$u" >> "$report_file"
+					fi
+					;;
+			* )
+					;;
+			esac
+			
+		done < <(jq '.[] | {completed: .completed, last_update: .last_update}' "$statfile")
+
+		echo
+		if [ "$l" -ne "$nl" ]
+		then	echo "expected $nl languages, found $l"
+		fi
+		
+done

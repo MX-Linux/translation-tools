@@ -46,3 +46,7 @@ language directories under a mo/ directory.
 Modified remake_desktops so that the translator does not have to put "Name=" or
 "Comment=" at the start of the lines. Just translating the English name of comment
 is OK.
+
+2019.04.23
+
+Refresh repo with latest version of all scripts.

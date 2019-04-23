@@ -12,6 +12,9 @@
 	# We could have taken this all the way and merged what we've got here into the app's
 	# desktop file. That would complete the automation.
 
+	# Remember that we need the en file for this. So after doing the download of all files
+	# using the api script, do a special manual download for the en file.
+	
 	# We want to leave the original downloaded files untouched so we can repeat this script
 	# without having to undo any changes. So we create a new directory to hold the work files.
 	# If it already exists, remove any existing files from previous run.
@@ -60,9 +63,9 @@ echo -n > all.txt
 for f in $(ls "$dir_work"/*)
 do
 		# First get the language code from the file name.
-		# eg if the file name is mx-all-desktop-entries_pt_BR.ts
+		# eg if the file name is mx-all-desktop-entries_pt_BR.txt
 		# remove everything up to and including the first underscore.
-		# Then remove the trailing .ts or whatever.
+		# Then remove the trailing .txt or whatever.
 		#
 		# Lines will be printed with the language in [], like Name[pt_BR]=.
 		# Except for English, which has no modifier for Name and Comment.
