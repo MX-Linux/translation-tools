@@ -1,0 +1,41 @@
+# 2019.03.27
+# trans_driver.txt
+# List of desktop files for the autoupdate shell script
+# Column 1: directory (and possibly sub-directory) under main repo directory
+# Column 2: type: ts or po
+#           We assume if ts, then has standard sub-directory "translations"
+#           And if po, then has standard sub-directory "translations_script"
+# Column 3: name of the download directory (and file name root)
+#           Always the same as the repo name, except for mx-usb-unmounter-start
+#
+apt-notifier			po
+ddm-mx				po
+formatusb			ts
+gazelle-installer		ts
+mx-boot-options			ts
+mx-bootrepair			ts
+mx-cleanup			ts
+mx-clocky			po
+mx-codecs			ts
+mx-compton			ts
+mx-conky			ts
+mx-findshares			ts
+mx-goodies			po
+mx-idevice-mounter		po
+mx-live-usb-maker		ts
+mx-menu-editor			ts
+mx-network-assistant		ts
+mx-packageinstaller		ts
+mx-remastercc			ts
+mx-repo-manager			ts
+mx-select-sound			ts
+mx-snapshot			ts
+mx-switchuser			po
+mx-system-sounds		ts
+mx-timeset			po
+mx-tools			ts
+mx-tweak			ts
+mx-usb-unmounter		ts
+mx-usb-unmounter		po	mx-usb-unmounter-start
+mx-user				ts
+mx-welcome			ts

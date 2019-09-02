@@ -46,10 +46,6 @@
 	#		gazelle-services-categories.txt		List of English categories
 	#							that was extracted from services.list
 	#							and uploaded to Transifex
-	#		gazelle-services-descriptions.txt	List of English services descriptions
-	#							that was extracted from services.list
-	#							and uploaded to Transifex (not actually
-	#							used in this program)
 	#		gazelle-services-list.txt		The English lines from services.list,
 	#							of the form name=category, description
 	#							with comments and other languages removed

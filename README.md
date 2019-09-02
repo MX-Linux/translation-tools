@@ -50,3 +50,8 @@ is OK.
 2019.04.23
 
 Refresh repo with latest version of all scripts.
+
+2019.09.02
+
+Refresh repo with latest versions.
+Add desktop_driver.txt, trans_driver.txt, pushdates.odt

@@ -21,7 +21,7 @@
 	# -f means give no message if there are no files there.
 	# Note too that we say "$dir_work"/*, not "$dir_work/*". The latter removes the
 	# file expansion of * and looks for non-existent file work/*
-	# Then copy the downloaded files to the work directory.
+	# Then we copy the downloaded files to the work directory.
 	
 dir_download="mx-all-desktop-entries"
 dir_work="work"

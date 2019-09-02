@@ -127,8 +127,9 @@ do
 	fi
 	
 		# If there is 3rd column, use that for the api download name;
-		# otherwise use the repo directory. (But remember, some repo directory have a
-		# sub-directory - mx-tweak/tweak - so remove that sub-directory.)
+		# otherwise use the repo directory. (But remember, a repo directory
+		# could have a sub-directory. So in that case, remove the sub-directory part from
+		# the repo directory name to get the download name.)
 		
 	if [ -z "$downloadname" ]
 	then	downloadname=${repodir%%/*}

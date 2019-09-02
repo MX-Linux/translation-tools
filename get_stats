@@ -27,7 +27,7 @@ echo
 
 if [ $# -ne 3 ]
 then	echo "get_stats: incorrect number of arguments"
-	echo "usage: get_stats txuser txpassword pushdate"
+	echo "usage: get_stats txuser txpassword yyyy-mm-dd"
 	exit
 fi
 
@@ -76,7 +76,7 @@ declare -a reslist
 mapfile -O 1 -t reslist < <( \
 curl -L --user "$userpass" -X GET "$url"'resources/'	\
 | awk -v FS='"' '/"slug":/ {print $4}'			\
-| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print}' )
+| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /formatusb/ || /gazelle-/ {print}' )
 
 nr=${#reslist[@]}
 

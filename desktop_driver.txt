@@ -1,0 +1,45 @@
+# 2019.08.21
+# desktop_driver.txt
+# List of desktop files for the autoupdate shell script
+# First column is directory (and possibly sub-directory) under main repo directory
+# Second column is desktop file name
+#
+apt-notifier			mx-updater-autostart-kde.desktop
+apt-notifier			mx-updater-autostart-xdg.desktop
+apt-notifier			mx-updater-menu-kde.desktop
+apt-notifier			mx-updater-menu-non-kde.desktop
+checkaptgpg			mx-checkaptgpg.desktop
+checkaptgpg			mx-checkaptgpg-kde.desktop
+ddm-mx				ddm-nvidia.desktop
+desktop-defaults-xfce-mx	Printers-(CUPS).desktop
+formatusb			formatusb.desktop
+gazelle-installer		minstall.desktop
+mx-boot-options			mx-boot-options.desktop
+mx-bootrepair			mx-bootrepair.desktop
+mx-cleanup			mx-cleanup.desktop
+mx-clocky			mx-clocky.desktop
+mx-codecs			mx-codecs.desktop
+mx-compton			mx-compton.desktop
+mx-conky			mx-conky.desktop
+mx-docs				Help.desktop
+mx-findshares			mx-findshares.desktop
+mx-goodies/quick-system-info	Quick_System_Info.desktop
+mx-goodies			system-keyboard-mx.desktop
+mx-goodies			system-locales-mx.desktop
+mx-idevice-mounter		iDevice-Mounter.desktop
+mx-live-usb-maker		CUSTOMPROGRAMNAME.desktop
+mx-menu-editor			mx-menu-editor.desktop
+mx-network-assistant		mx-network-assistant.desktop
+mx-packageinstaller		mx-packageinstaller.desktop
+mx-remastercc			mx-remastercc.desktop
+mx-repo-manager			mx-repo-manager.desktop
+mx-select-sound			mx-select-sound.desktop
+mx-snapshot			mx-snapshot.desktop
+mx-switchuser			mx-switchuser.desktop
+mx-system-sounds		mx-system-sounds.desktop
+mx-timeset/install		time-settings.desktop
+mx-tools			mx-tools.desktop
+mx-tweak			mx-tweak.desktop
+mx-usb-unmounter		mx-usb-unmounter.desktop
+mx-user				mx-user.desktop
+mx-welcome			mx-welcome.desktop

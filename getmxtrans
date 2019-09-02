@@ -63,10 +63,10 @@ function fundownload
 		getphrase="$url"'resource/'"$resource"'/translation/'"$l"'/?file'
 #		echo
 #		echo "$l $outfile $getphrase"
-
+		echo -en "$l""\t"
 		curl -s -L --user "$userpass" -o "$outfile" -X GET "$getphrase"
 	done
-
+	echo
 }
 
 	# ====================================================================
@@ -163,7 +163,7 @@ declare -a jqlist
 mapfile -O 1 -t jqlist < <( \
 curl -s -L --user "$userpass" -X GET "$url"'resources/' \
 | jq -r '.[] | .slug , .i18n_type' \
-| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /gazelle-/ {print; getline; print}' )
+| awk '/mx-/ || /apt-notifier/ || /ddm-mx/ || /formatusb/ || /gazelle-/ {print; getline; print}' )
 
 	# ____________________________________________________________________
 	#
