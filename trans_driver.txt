@@ -19,6 +19,7 @@ mx-clocky			po
 mx-codecs			ts
 mx-compton			ts
 mx-conky			ts
+mx-datetime			ts
 mx-findshares			ts
 mx-goodies			po
 mx-idevice-mounter		po
@@ -34,7 +35,7 @@ mx-switchuser			po
 mx-system-sounds		ts
 mx-timeset			po
 mx-tools			ts
-mx-tweak			ts
+#mx-tweak			ts
 mx-usb-unmounter		ts
 mx-usb-unmounter		po	mx-usb-unmounter-start
 mx-user				ts

@@ -209,7 +209,7 @@ echo "$pmcount"
 
 # Until we have the new set of files formatted the way we are doing it here,
 # exit now, otherwise everything is different.
-exit
+# exit
 
 	# ____________________________________________________________________________________	
 	# We don't want to send back pm files if they haven't changed.

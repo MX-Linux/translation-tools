@@ -55,3 +55,12 @@ Refresh repo with latest version of all scripts.
 
 Refresh repo with latest versions.
 Add desktop_driver.txt, trans_driver.txt, pushdates.odt
+
+2019.10.04
+
+desktop_driver.txt:    comment out mx-tweak because mx-tweak has two versions temporarily
+getmxtrans:            add mr language
+pushdates.odt:         updated status
+remake_pkglist_des:    allow to produce differences directory and files
+trans_driver.txt:      add mx-datetime, comment out mx-tweak temporarily
+

@@ -84,7 +84,7 @@ echo "getmxtrans"
 echo "Download from Transifex the translation files for a resource"
 echo
 
-alllang="am ar bg ca cs da de el es et eu fa fi fr he_IL hi hr hu id is it ja ja_JP kk ko lt mk nb nl pl pt pt_BR ro ru sk sl sq sr sv tr uk zh_CN zh_TW"
+alllang="am ar bg ca cs da de el es et eu fa fi fr he_IL hi hr hu id is it ja ja_JP kk ko lt mk mr nb nl pl pt pt_BR ro ru sk sl sq sr sv tr uk zh_CN zh_TW"
 
 userpass="$1"':'"$2"
 url='https://www.transifex.com/api/2/project/antix-development/'
