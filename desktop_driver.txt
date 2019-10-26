@@ -4,12 +4,6 @@
 # First column is directory (and possibly sub-directory) under main repo directory
 # Second column is desktop file name
 #
-# Note: As of 2019.09, we have mx-tweak-master and mx-tweak-gtk3.
-#       Therefore, the mx-tweak line has been commented out.
-#       Soon, we will remove Transifex mx-tweak resource and rename
-#       Transifex resource mx-tweak-gtk3 to mx-tweak.
-#       This will allow line to be uncommented.
-#
 apt-notifier			mx-updater-autostart-kde.desktop
 apt-notifier			mx-updater-autostart-xdg.desktop
 apt-notifier			mx-updater-menu-kde.desktop
@@ -46,7 +40,7 @@ mx-switchuser			mx-switchuser.desktop
 mx-system-sounds		mx-system-sounds.desktop
 mx-timeset/install		time-settings.desktop
 mx-tools			mx-tools.desktop
-#mx-tweak			mx-tweak.desktop
+mx-tweak			mx-tweak.desktop
 mx-usb-unmounter		mx-usb-unmounter.desktop
 mx-user				mx-user.desktop
 mx-welcome			mx-welcome.desktop

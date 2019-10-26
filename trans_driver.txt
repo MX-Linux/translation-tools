@@ -35,7 +35,7 @@ mx-switchuser			po
 mx-system-sounds		ts
 mx-timeset			po
 mx-tools			ts
-#mx-tweak			ts
+mx-tweak			ts
 mx-usb-unmounter		ts
 mx-usb-unmounter		po	mx-usb-unmounter-start
 mx-user				ts

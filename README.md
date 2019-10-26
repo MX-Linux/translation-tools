@@ -64,3 +64,8 @@ pushdates.odt:         updated status
 remake_pkglist_des:    allow to produce differences directory and files
 trans_driver.txt:      add mx-datetime, comment out mx-tweak temporarily
 
+2019.10.24
+
+desktop_driver.txt:     deleted # from xm-tweak
+getmxtrans:		added fil_PH language
+trans_driver.txt:       deleted # from mx-tweak 
