@@ -6,20 +6,20 @@
 #           We assume if ts, then has standard sub-directory "translations"
 #           And if po, then has standard sub-directory "translations_script"
 # Column 3: name of the download directory (and file name root)
-#           Always the same as the repo name, except for mx-usb-unmounter-start
+#           Always the same as the repo name, except for mx-usb-unmounter-start 
+#	    as well as mx-boot-repair 
 #
 apt-notifier			po
 ddm-mx				po
 formatusb			ts
 gazelle-installer		ts
 mx-boot-options			ts
-mx-bootrepair			ts
+mx-boot-repair			ts
 mx-cleanup			ts
 mx-clocky			po
 mx-codecs			ts
 mx-compton			ts
 mx-conky			ts
-mx-datetime			ts
 mx-findshares			ts
 mx-goodies			po
 mx-idevice-mounter		po
