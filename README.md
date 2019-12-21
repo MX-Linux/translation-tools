@@ -69,3 +69,8 @@ trans_driver.txt:      add mx-datetime, comment out mx-tweak temporarily
 desktop_driver.txt:     deleted # from xm-tweak
 getmxtrans:		added fil_PH language
 trans_driver.txt:       deleted # from mx-tweak 
+
+2019.12.21
+
+getmxtrans:		added bn and vi languages
+
