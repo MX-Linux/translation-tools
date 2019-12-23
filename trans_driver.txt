@@ -21,6 +21,7 @@ mx-codecs			ts
 mx-compton			ts
 mx-conky			ts
 mx-findshares			ts
+mx-fluxbox			po
 mx-goodies			po
 mx-idevice-mounter		po
 mx-live-usb-maker		ts

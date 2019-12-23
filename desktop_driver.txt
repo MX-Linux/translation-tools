@@ -24,6 +24,7 @@ mx-conky			mx-conky.desktop
 mx-datetime			mx-datetime.desktop
 mx-docs				Help.desktop
 mx-findshares			mx-findshares.desktop
+mx-fluxbox			mxflux.desktop
 mx-goodies/quick-system-info	Quick_System_Info.desktop
 mx-goodies			system-keyboard-mx.desktop
 mx-goodies			system-locales-mx.desktop
