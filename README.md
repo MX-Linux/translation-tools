@@ -74,3 +74,6 @@ trans_driver.txt:       deleted # from mx-tweak
 
 getmxtrans:		added bn and vi languages
 
+2019.12.24
+
+pushdates.odt:		Updated Notes column with additional info, script names
