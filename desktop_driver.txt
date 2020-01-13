@@ -15,7 +15,7 @@ desktop-defaults-xfce-mx	Printers-(CUPS).desktop
 formatusb			formatusb.desktop
 gazelle-installer		minstall.desktop
 mx-boot-options			mx-boot-options.desktop
-mx-bootrepair			mx-bootrepair.desktop
+mx-bootrepair			mx-boot-repair.desktop
 mx-cleanup			mx-cleanup.desktop
 mx-clocky			mx-clocky.desktop
 mx-codecs			mx-codecs.desktop

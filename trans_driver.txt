@@ -1,6 +1,6 @@
 # 2019.03.27
 # trans_driver.txt
-# List of desktop files for the autoupdate shell script
+# List of application string files for the autoupdate shell script
 # Column 1: directory (and possibly sub-directory) under main repo directory
 # Column 2: type: ts or po
 #           We assume if ts, then has standard sub-directory "translations"
@@ -14,7 +14,7 @@ ddm-mx				po
 formatusb			ts
 gazelle-installer		ts
 mx-boot-options			ts
-mx-boot-repair			ts
+mx-bootrepair			ts		mx-boot-repair
 mx-cleanup			ts
 mx-clocky			po
 mx-codecs			ts
