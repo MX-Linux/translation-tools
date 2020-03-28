@@ -7,7 +7,7 @@
 #           And if po, then has standard sub-directory "translations_script"
 # Column 3: name of the download directory (and file name root)
 #           Always the same as the repo name, except for mx-usb-unmounter-start 
-#	    as well as mx-boot-repair 
+#			as well as mx-boot-repair 
 #
 apt-notifier			po
 ddm-mx				po
@@ -20,9 +20,11 @@ mx-clocky			po
 mx-codecs			ts
 mx-compton			ts
 mx-conky			ts
+mx-dockmaker		ts		
 mx-findshares			ts
 mx-fluxbox			po
 mx-goodies			po
+mx-idesktool		po
 mx-idevice-mounter		po
 mx-live-usb-maker		ts
 mx-menu-editor			ts
